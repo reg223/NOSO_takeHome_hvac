@@ -1,4 +1,10 @@
-# This package intentionally uses only the Python standard library.
-torch
-orjson
-pydantic
+# Verified with Python 3.9.23 on macOS x86_64.
+# Runtime, training, and test dependencies used by the plan.
+joblib==1.4.2
+numpy==2.0.2
+pytest==8.4.2
+scikit-learn==1.6.1
+
+# Pinned transitive dependencies required by scikit-learn for reproducibility.
+scipy==1.13.1
+threadpoolctl==3.7.0
