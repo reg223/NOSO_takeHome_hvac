@@ -22,3 +22,8 @@ Use a tag that names the kind of work, for example:
 
 Tags must be lowercase and 3–5 characters long. Keep the description specific
 and written in the imperative mood where practical.
+
+When a new category of work is introduced, add its tag and meaning to this
+list before using it in a commit. Commit categories are metadata, so they do
+not correspond to `.gitignore` patterns; add a path to `.gitignore` only when
+the category also introduces generated or local-only files.
