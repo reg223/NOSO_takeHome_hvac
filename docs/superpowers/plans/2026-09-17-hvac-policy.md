@@ -107,15 +107,15 @@ Run: `python -m submission.audit --train data/train_logs.jsonl --valid data/vali
 
 **Interfaces:** `featurize(observation) -> dict`; `improved_rule(observation, history) -> str`; `eligible_actions(observation) -> list[str]`; `service_override(observation) -> str | None`.
 
-- [ ] Allow the documented observation fields plus the observed recency and last-action fields. Exclude `case_id`, row metadata, reward, propensity, `info`, `done`, and next state from features.
-- [ ] Encode missing categories as `__missing__`; ignore unknown one-hot categories; impute numerical values using fit-set medians with missing indicators. Preserve the observed recency value and add `recency_is_99` indicators.
-- [ ] Derive last action, each action's prior count, consecutive repeat count, and remaining decisions `4-turn`. Ignore passed history in version 1; do not read its rewards.
-- [ ] Start with an explicit escalation override for unhappy signal or service risk greater than `0.78`, matching the supplied threshold. Label it a product safeguard, not an empirically optimal cutoff.
-- [ ] Start the fallback in this order: service override; ignored count at least 2 → park; outbound recency 0 → wait; service issue → check in; maintenance/install-warranty topic → check in unless the last action was check in and inbound recency is nonzero, in which case wait; relevant expiring/lapsed membership → membership touch; open estimate → objection/readiness/nudge logic; otherwise wait.
-- [ ] For open estimates: explicit objection → ask unless last action was ask and inbound recency is nonzero, then wait; positive signal → scheduling; no signal and last action estimate nudge → ask; otherwise estimate nudge. Patience zero is retained as a learned feature, not a standalone override.
-- [ ] Membership relevance means membership-renewal topic or expiring/lapsed status outside service/maintenance priority. Extend exact topic names only after the audit identifies them and record the mapping.
-- [ ] For learned candidates, always retain wait and park; allow escalation; add check in for service/maintenance/install-warranty contexts; add membership touch for membership relevance; add nudge/ask/scheduling for open-estimate context. Always include fallback action. Keep a no-filter ablation on development data to expose damage from overly restrictive rules.
-- [ ] Verify invariance to changing forbidden fields and arbitrary cross-case history. Verify all eight actions have meaningful fixtures, escalation outranks parking, and zero patience does not force park.
+- [x] Allow the documented observation fields plus the observed recency and last-action fields. Exclude `case_id`, row metadata, reward, propensity, `info`, `done`, and next state from features.
+- [x] Encode missing categories as `__missing__`; ignore unknown one-hot categories; impute numerical values using fit-set medians with missing indicators. Preserve the observed recency value and add `recency_is_99` indicators.
+- [x] Derive last action, each action's prior count, consecutive repeat count, and remaining decisions `4-turn`. Ignore passed history in version 1; do not read its rewards.
+- [x] Start with an explicit escalation override for unhappy signal or service risk greater than `0.78`, matching the supplied threshold. Label it a product safeguard, not an empirically optimal cutoff.
+- [x] Start the fallback in this order: service override; ignored count at least 2 → park; outbound recency 0 → wait; service issue → check in; maintenance/install-warranty topic → check in unless the last action was check in and inbound recency is nonzero, in which case wait; relevant expiring/lapsed membership → membership touch; open estimate → objection/readiness/nudge logic; otherwise wait.
+- [x] For open estimates: explicit objection → ask unless last action was ask and inbound recency is nonzero, then wait; positive signal → scheduling; no signal and last action estimate nudge → ask; otherwise estimate nudge. Patience zero is retained as a learned feature, not a standalone override.
+- [x] Membership relevance means membership-renewal topic or expiring/lapsed status outside service/maintenance priority. Extend exact topic names only after the audit identifies them and record the mapping.
+- [x] For learned candidates, always retain wait and park; allow escalation; add check in for service/maintenance/install-warranty contexts; add membership touch for membership relevance; add nudge/ask/scheduling for open-estimate context. Always include fallback action. Keep a no-filter ablation on development data to expose damage from overly restrictive rules.
+- [x] Verify invariance to changing forbidden fields and arbitrary cross-case history. Verify all eight actions have meaningful fixtures, escalation outranks parking, and zero patience does not force park.
 
 Example contract test:
 
@@ -127,6 +127,8 @@ def test_identifier_is_not_a_feature():
 Run: `python -m pytest tests/test_features.py tests/test_rules.py -q`.
 
 **Done when:** rules are explainable and feature extraction is identical at training and inference. Preserve original `simple_rule` and `always_check_in` as two additional benchmarks.
+
+**Completed 2026-09-17:** 45 Task 2 tests and 70 total tests passed. All 74,733 training observations passed action, fallback-inclusion, history-invariance, and mutation checks; all 2,860 service overrides were honored. Fit-only preprocessing yielded 105 finite features on the development-score observations. `artifacts/README.md` extends the Task 1 report; `docs/task2-feature-and-rule-contract.md` records topic mapping and missing-value decisions. The no-filter switch is ready for later development experiments; no policy-value comparison or ablation scoring has been performed. Task 3 remains unstarted.
 
 ## Task 3: Build a trustworthy evaluator before optimizing
 

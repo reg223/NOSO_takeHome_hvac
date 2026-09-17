@@ -1,0 +1,30 @@
+{
+  "encoded_feature_count": 105,
+  "encoder_fit_role": "policy_fit",
+  "encoder_fit_rows": 52323,
+  "encoder_transform_role": "development_score",
+  "encoder_transform_rows": 11144,
+  "fallback_excluded_by_filter": 0,
+  "history_dependent_decisions": 0,
+  "illegal_actions": 0,
+  "models_trained": false,
+  "nonfinite_encoded_values": 0,
+  "observation_mutations": 0,
+  "performance_claim": null,
+  "rule_action_counts_on_logged_training_states": {
+    "ASK_OBJECTION": 6755,
+    "CHECK_IN": 9069,
+    "ESCALATE_TO_HUMAN": 2860,
+    "ESTIMATE_NUDGE": 4226,
+    "MEMBERSHIP_TOUCH": 3444,
+    "OFFER_SCHEDULING": 571,
+    "PARK_THREAD": 11339,
+    "WAIT": 36469
+  },
+  "scope": "Training observations only; behavioral and feature checks, not policy value estimation.",
+  "service_override_rows": 2860,
+  "service_override_violations": 0,
+  "train_sha256": "c36bf280dbda6e77ff769c949915f6ef21fa0e01acf9b1c20302bc8ed173ce08",
+  "training_rows_checked": 74733,
+  "validation_used_for_fitting": false
+}
