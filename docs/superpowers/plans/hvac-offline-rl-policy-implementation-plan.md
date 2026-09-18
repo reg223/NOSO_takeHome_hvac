@@ -115,14 +115,14 @@ Run: `python -m pytest tests/test_features.py tests/test_rules.py -q`.
 
 **Interfaces:** `score_episodes(policy, episodes, evaluator) -> list[dict]`; `fit_fixed_policy_evaluator(episodes, policy, config) -> FixedPolicyEvaluator`; `summarize(scores, seed: int = 20260621, bootstrap_reps: int = 1000) -> dict`.
 
-- [ ] Report historical logged-policy episode return separately from candidate estimates.
-- [ ] Implement per-decision importance sampling with cumulative ratio `1[action == logged_action] / action_prob`; do not restart after a mismatch.
-- [ ] Implement sequential doubly robust evaluation using a separately fitted fixed-policy evaluator. The evaluator must follow the frozen candidate policy, not maximize over actions.
-- [ ] Use zero continuation after `done`, including `max_steps`; distinguish terminal action outcomes from ordinary continuation.
-- [ ] Report unclipped PDIS/DR, propensity clipping sensitivity at 10/50/100, maximum cumulative weights, and effective sample size `(sum(w) ** 2) / sum(w ** 2)` by turn.
-- [ ] Bootstrap complete episodes 1,000 times with paired episode samples shared across policies. Label intervals conditional on fitted models; they do not remove hidden-confounding or extrapolation bias.
-- [ ] Predefine slices: service issue/unhappy/high-risk, open estimate with objection, cold/ignored, and membership relevance. Treat later-turn patience/ignored slices as replay diagnostics rather than causal initial-state populations.
-- [ ] Add an enumerable two-action/two-step fixture that verifies PDIS, DR, mismatch-zeroing, terminal continuation, and zero-support handling.
+- [x] Report historical logged-policy episode return separately from candidate estimates.
+- [x] Implement per-decision importance sampling with cumulative ratio `1[action == logged_action] / action_prob`; do not restart after a mismatch.
+- [x] Implement sequential doubly robust evaluation using a separately fitted fixed-policy evaluator. The evaluator must follow the frozen candidate policy, not maximize over actions.
+- [x] Use zero continuation after `done`, including `max_steps`; distinguish terminal action outcomes from ordinary continuation.
+- [x] Report unclipped PDIS/DR, clipping sensitivity at cumulative importance-weight caps of 10/50/100, maximum cumulative weights, and effective sample size `(sum(w) ** 2) / sum(w ** 2)` by turn. The protocol clarifies that these are weight caps, not probability thresholds.
+- [x] Bootstrap complete episodes 1,000 times with paired episode samples shared across policies. Label intervals conditional on fitted models; they do not remove hidden-confounding or extrapolation bias.
+- [x] Predefine slices: service issue/unhappy/high-risk, open estimate with objection, cold/ignored, and membership relevance. Treat later-turn patience/ignored slices as replay diagnostics rather than causal initial-state populations.
+- [x] Add an enumerable two-action/two-step fixture that verifies PDIS, DR, mismatch-zeroing, terminal continuation, and zero-support handling.
 
 Evaluate at minimum: `always_check_in`, `always_estimate_nudge`, `simple_rule`, and the contextual fallback. Add a behavior-cloning reference only if it can be implemented without delaying the core policy.
 
@@ -236,5 +236,21 @@ Documented implementation decisions:
 - Service-threshold alternatives are configurable and unit-tested. Comparing
   their value on development data requires Task 3 and remains deferred to it.
 
-The next checkpoint is Task 3: exact synthetic evaluator tests and paired baseline
-estimates with support, ESS, costs, and explicit off-policy limitations.
+At checkpoint 1 handoff, the next task was Task 3; its completion is recorded below.
+
+## Checkpoint 2 completion notes (2026-09-18)
+
+Task 3 is complete. `submission/evaluate.py` and
+`scripts/evaluate_development.py` implement the frozen protocol in
+`docs/checkpoint-two-protocol.md`. Results are in `artifacts/dev_baselines.json`;
+the brief findings and implications are in `docs/checkpoint-two-report.md`.
+
+The evaluator follows each fixed candidate, fits only evaluator-fit data, and
+scores only development-score data. Tests cover exact trajectory arithmetic,
+terminal handling, leakage, role separation, pairing, support failures, and the
+runner. Code review found no substantive issues.
+
+The contextual-versus-starter reward comparison and every initial-state slice
+remain inconclusive. Low late-turn ESS and sensitivity to weight caps preclude
+promotion. No policy or safeguard was tuned and validation logs were not accessed.
+The next checkpoint is Task 4, the supported immediate-reward candidate.

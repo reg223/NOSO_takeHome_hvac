@@ -1,5 +1,23 @@
 # Progress report: data audit, feature contract, and rule benchmark
 
+## Checkpoint 2: development evaluator
+
+`dev_baselines.json` contains fixed-policy direct, PDIS, and sequential DR
+estimates on the frozen development-score role. It includes paired episode
+intervals, four initial-state slices, costs/outcomes/touches, support and ESS,
+weight-cap sensitivities, evaluator settings, role IDs, and source/data hashes.
+Only evaluator-fit episodes fit the evaluators; validation was not accessed.
+
+Reproduce with `.venv/bin/python scripts/evaluate_development.py`.
+See [the brief report](../docs/checkpoint-two-report.md) and
+[the prespecified protocol](../docs/checkpoint-two-protocol.md).
+These estimates do not establish that the contextual rule improves on the
+starter. Task 4 is the next checkpoint.
+
+The full run reproduced byte-for-byte from `/tmp` with the same source revision
+and settings. Artifact SHA-256:
+`7c008fda9d4342d3ca8fa012cb2c9774c85788df29c7570de8b59114b492edff`.
+
 ## Task 1: data audit and development split
 
 Generated from the supplied JSONL files using Python 3.9.23 and NumPy 2.0.2;
