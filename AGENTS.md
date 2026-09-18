@@ -1,5 +1,16 @@
 # Project contribution rules
 
+## Commit and merge preferences
+
+- This is a solo-maintainer project. The owner grants standing permission to
+  merge completed, verified work into `main` without asking for confirmation
+  each time, unless a later request says otherwise.
+- Commit frequently at coherent, verified milestones. Keep commits focused
+  and separate different types of work using the tags below rather than
+  accumulating a large mixed commit.
+- Run checks appropriate to the changes before committing or merging, and
+  preserve unrelated work in the working tree.
+
 ## Commit messages
 
 Every commit message must begin with a lowercase tag of 3–5 characters,
