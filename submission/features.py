@@ -2,8 +2,9 @@
 
 Only the explicit schema below is read. IDs, outcome metadata, next states,
 and caller-supplied history never enter the feature representation. ``fit``
-must receive policy-fit observations only; ``transform`` never changes fitted
-medians or categories. Persist the fitted encoder with the model.
+uses only its model's designated fit role: policy-fit for a learned policy,
+evaluator-fit for a separate fixed-policy evaluator. ``transform`` never changes
+fitted medians or categories. Persist the fitted encoder with the model.
 """
 from __future__ import annotations
 
