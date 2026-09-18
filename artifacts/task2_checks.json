@@ -1,0 +1,70 @@
+{
+  "action_order": [
+    "WAIT",
+    "CHECK_IN",
+    "ESTIMATE_NUDGE",
+    "ASK_OBJECTION",
+    "OFFER_SCHEDULING",
+    "MEMBERSHIP_TOUCH",
+    "PARK_THREAD",
+    "ESCALATE_TO_HUMAN"
+  ],
+  "encoder": {
+    "features": 113,
+    "fit_role": "policy_fit",
+    "fit_rows": 52323,
+    "medians_changed_on_transform": false,
+    "nonfinite_values": 0,
+    "transform_role": "development_score",
+    "transform_rows": 11144
+  },
+  "episodes": 24000,
+  "fallback_excluded": 0,
+  "feature_schema_version": 2,
+  "history_contamination": 0,
+  "illegal_actions": 0,
+  "limitations": "Training-state replay and interface checks only; no policy-performance estimate, candidate learning, or validation scoring.",
+  "observation_mutations": 0,
+  "policy_action_counts": {
+    "always_check_in": {
+      "CHECK_IN": 74733
+    },
+    "always_estimate_nudge": {
+      "ESTIMATE_NUDGE": 74733
+    },
+    "contextual_fallback": {
+      "ASK_OBJECTION": 6755,
+      "CHECK_IN": 9069,
+      "ESCALATE_TO_HUMAN": 2860,
+      "ESTIMATE_NUDGE": 4226,
+      "MEMBERSHIP_TOUCH": 3444,
+      "OFFER_SCHEDULING": 571,
+      "PARK_THREAD": 11339,
+      "WAIT": 36469
+    },
+    "simple_rule": {
+      "ASK_OBJECTION": 13224,
+      "CHECK_IN": 14416,
+      "ESCALATE_TO_HUMAN": 2860,
+      "ESTIMATE_NUDGE": 14518,
+      "MEMBERSHIP_TOUCH": 9915,
+      "OFFER_SCHEDULING": 7030,
+      "PARK_THREAD": 11339,
+      "WAIT": 1431
+    }
+  },
+  "protected_observations": 2860,
+  "role_counts": {
+    "development_score": 3600,
+    "evaluator_fit": 3600,
+    "policy_fit": 16800
+  },
+  "rows": 74733,
+  "schema_version": 1,
+  "seed": 20260621,
+  "service_risk_threshold": 0.78,
+  "service_violations": 0,
+  "splits_sha256": "fb09cf79da07bea2ddd45a098f82019a8f9360043ad0edbeb8799fae5ad5c9be",
+  "starter_reference_mismatches": 0,
+  "train_sha256": "c36bf280dbda6e77ff769c949915f6ef21fa0e01acf9b1c20302bc8ed173ce08"
+}

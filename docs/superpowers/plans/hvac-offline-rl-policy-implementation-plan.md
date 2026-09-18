@@ -68,13 +68,13 @@ Support is uneven. Validation contains 4,945 `ESTIMATE_NUDGE`, 3,201 `ASK_OBJECT
 
 **Interfaces:** `load_episodes(path: str) -> list[list[dict]]`; `validate_episode(rows: list[dict]) -> None`; `audit(train_path: str, valid_path: str) -> dict`; `write_splits(train_episode_ids: list[str], seed: int = 20260621) -> dict[str, list[str]]`.
 
-- [ ] Write tests for duplicate steps, noncontiguous steps, invalid actions, non-finite rewards, propensities outside `(0, 1]`, transition mismatches, early terminal rows, missing terminal rows, and cross-split ID overlap.
-- [ ] Implement line-numbered JSON decoding and ordered grouping by `episode_id`.
-- [ ] Validate `step == observation["turn"]`, contiguous steps from 0, `done` authority, terminal placement, and adjacent `next_observation` equality.
-- [ ] Confirm that `PARK_THREAD` and `ESCALATE_TO_HUMAN` terminate in the supplied data; do not hard-code a different terminal convention without documenting it.
-- [ ] Produce counts by turn/action/topic/signal, outcome counts, reward and propensity quantiles, costs, and recency sentinel summaries.
-- [ ] Shuffle sorted training episode IDs with seed `20260621` into 16,800 policy-fit, 3,600 evaluator-fit, and 3,600 development-score episodes. Keep repeated case IDs grouped if the audit finds any.
-- [ ] Save train/validation SHA-256 hashes, split IDs, and audit results. Never use validation outcomes for split construction.
+- [x] Write tests for duplicate steps, noncontiguous steps, invalid actions, non-finite rewards, propensities outside `(0, 1]`, transition mismatches, early terminal rows, missing terminal rows, and cross-split ID overlap.
+- [x] Implement line-numbered JSON decoding and ordered grouping by `episode_id`.
+- [x] Validate `step == observation["turn"]`, contiguous steps from 0, `done` authority, terminal placement, and adjacent `next_observation` equality.
+- [x] Confirm that `PARK_THREAD` and `ESCALATE_TO_HUMAN` terminate in the supplied data; do not hard-code a different terminal convention without documenting it.
+- [x] Produce counts by turn/action/topic/signal, outcome counts, reward and propensity quantiles, costs, and recency sentinel summaries.
+- [x] Shuffle sorted training episode IDs with seed `20260621` into 16,800 policy-fit, 3,600 evaluator-fit, and 3,600 development-score episodes. Keep repeated case IDs grouped if the audit finds any.
+- [x] Save train/validation SHA-256 hashes, split IDs, and audit results. Never use validation outcomes for split construction.
 
 Run: `python -m submission.audit --train data/train_logs.jsonl --valid data/valid_logs.jsonl --output artifacts/audit.json --splits artifacts/splits.json`.
 
@@ -86,15 +86,15 @@ Run: `python -m submission.audit --train data/train_logs.jsonl --valid data/vali
 
 **Interfaces:** `featurize(observation: dict, history: list[dict] | list[str]) -> dict[str, float | int | str]`; `fallback_action(observation: dict, history: list[dict] | list[str]) -> str`; `eligible_actions(observation: dict, history: list[dict] | list[str]) -> list[str]`; `service_override(observation: dict, history: list[dict] | list[str]) -> str | None`.
 
-- [ ] Encode only README-visible fields plus verified decision-time recency fields. Exclude IDs, rewards, propensities, `info`, `done`, next state, and final outcomes.
-- [ ] Encode missing categorical values as `__missing__`, numeric missingness explicitly, and recency `99` both as its observed value and as an indicator.
-- [ ] Derive turn, remaining decisions, last action, action counts, repeated-action counts, consecutive waits, and whether objection/nudge/scheduling has already occurred.
-- [ ] Use the supplied `history` only to derive prior actions and decision-time state. Ignore any reward or outcome fields in history. Test arbitrary cross-case history contamination.
-- [ ] Preserve the original `simple_rule` as `simple_rule_action`; add `always_check_in` and `always_estimate_nudge` as simple references.
-- [ ] Implement a contextual fallback that prioritizes service recovery, engagement exhaustion, relationship/membership context, then open-estimate intent. Keep multiple actions eligible in ambiguous cases.
-- [ ] Treat `service_risk_score > 0.78` only as an initial product-safeguard configuration, not as an empirically optimal threshold. Record the threshold and test alternatives on development data.
-- [ ] Do not make zero patience alone terminal. Combine patience with ignored outreach, recency, touch count, and history.
-- [ ] Allow objection discovery in an open-estimate context even without an explicit objection, but discourage unchanged repeated objection questions.
+- [x] Encode only README-visible fields plus verified decision-time recency fields. Exclude IDs, rewards, propensities, `info`, `done`, next state, and final outcomes.
+- [x] Encode missing categorical values as `__missing__`, numeric missingness explicitly, and recency `99` both as its observed value and as an indicator.
+- [x] Derive turn, remaining decisions, last action, action counts, repeated-action counts, consecutive waits, and whether objection/nudge/scheduling has already occurred.
+- [x] Use the supplied `history` only to derive prior actions and decision-time state. Ignore any reward or outcome fields in history. Test arbitrary cross-case history contamination.
+- [x] Preserve the original `simple_rule` as `simple_rule_action`; add `always_check_in` and `always_estimate_nudge` as simple references.
+- [x] Implement a contextual fallback that prioritizes service recovery, engagement exhaustion, relationship/membership context, then open-estimate intent. Keep multiple actions eligible in ambiguous cases.
+- [x] Treat `service_risk_score > 0.78` only as an initial product-safeguard configuration, not as an empirically optimal threshold. Record the threshold and expose explicit alternatives. Unit tests verify configuration; performance experiments on development data await Task 3’s evaluator.
+- [x] Do not make zero patience alone terminal. Combine patience with ignored outreach, recency, touch count, and history.
+- [x] Allow objection discovery in an open-estimate context even without an explicit objection, but discourage unchanged repeated objection questions.
 
 Example test:
 
@@ -208,3 +208,33 @@ If time is constrained, a tested contextual fallback with honest baseline/offlin
 
 - [Tree-Based Batch Mode Reinforcement Learning](https://jmlr.org/papers/v6/ernst05a.html) — precedent for successive supervised action-value regression.
 - [Doubly Robust Off-policy Value Evaluation for Reinforcement Learning](https://proceedings.mlr.press/v48/jiang16.html) — sequential off-policy evaluation with explicit support assumptions.
+
+## Checkpoint 1 completion notes (2026-09-17)
+
+Tasks 1–2 are complete. Reproduction: run `.venv/bin/python -m pytest tests -q`,
+the Task 1 audit command, and `.venv/bin/python scripts/check_checkpoint_one.py`.
+Training-state smoke results are in `artifacts/task2_checks.json`; the feature,
+history, safeguard, and eligibility contract is in
+`docs/task2-feature-and-rule-contract.md`.
+
+Documented implementation decisions:
+
+- External history is accepted but ignored because the supplied checker can mix
+  cases. Visible `previous_actions` supplies episode-specific history features.
+- The streaming loader requires ordered, contiguous episode blocks and rejects
+  reused IDs or out-of-order steps rather than silently repairing corrupt logs.
+- Numeric missingness is `None` in scalar extraction and an explicit indicator
+  plus fit-role imputation in encoded model inputs.
+- The existing two-ignored-outreach exhaustion rule remains the contextual
+  benchmark; zero patience alone never parks. It is a heuristic, not an optimized
+  terminal decision. Context and prior outreach inform other branches.
+- The ID-only `write_splits` helper cannot infer case groups; the production audit
+  uses full episodes and `make_splits` to preserve case grouping.
+- The already-inspected validation aggregate audit was regenerated without
+  changing either frozen artifact. No candidate validation scoring or tuning
+  occurred. Baseline action counts are smoke diagnostics, not performance evidence.
+- Service-threshold alternatives are configurable and unit-tested. Comparing
+  their value on development data requires Task 3 and remains deferred to it.
+
+The next checkpoint is Task 3: exact synthetic evaluator tests and paired baseline
+estimates with support, ESS, costs, and explicit off-policy limitations.
