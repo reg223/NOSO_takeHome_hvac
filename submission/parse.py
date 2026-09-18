@@ -128,6 +128,31 @@ def load_episodes_with_quarantine(path):
     return episodes, quarantined
 
 
+def validate_episode(rows):
+    """Validate one ordered, complete episode in memory without mutating it."""
+    path = '<episode>'
+    if not rows:
+        raise ValueError('episode must contain at least one row')
+    current_case = _MISSING
+    for index, row in enumerate(rows):
+        line = index + 1
+        if not isinstance(row, dict):
+            _fail(path, line, 'row must be an object')
+        _validate_row(row, path, line)
+        if row['episode_id'] != rows[0]['episode_id']:
+            _fail(path, line, 'episode_id must be consistent within an episode')
+        _validate_next_step(row, index, path, line)
+        current_case = _validate_case_id(current_case, row, path, line)
+        if index:
+            previous = rows[index - 1]
+            if previous['done']:
+                _fail(path, index, 'terminal row must be final in its episode')
+            if previous['next_observation'] != row['observation']:
+                _fail(path, index, 'next_observation must equal the next row observation')
+    if not rows[-1]['done']:
+        _fail(path, len(rows), 'incomplete episode: final row is nonterminal')
+
+
 def parse_log(file):
     """Backward-compatible name for strict episode loading."""
     return load_episodes(file)

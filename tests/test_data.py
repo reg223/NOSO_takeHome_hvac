@@ -102,3 +102,29 @@ def test_case_ids_missing_initially_still_grouped():
     ep[0]['next_observation'] = later['observation']
     ep.append(later)
     assert case_id(ep) == 'known'
+
+
+def test_planned_id_split_interface_is_seeded_and_complete():
+    from submission import audit as module
+    assert hasattr(module, 'write_splits'), 'planned ID split interface is missing'
+    ids = [f'ep_{i:05}' for i in range(24000)]
+    result = module.write_splits(ids)
+    grouped = make_splits([episode(i) for i in range(24000)])
+    assert result == {role: grouped[role] for role in ROLES_FOR_TEST}
+    assert module.write_splits(list(reversed(ids))) == result
+    assert module.write_splits(ids, seed=7) != result
+    with pytest.raises(ValueError, match='duplicate'):
+        module.write_splits(['a', 'a'])
+
+
+def test_path_audit_interface(tmp_path):
+    import json
+    train, valid = tmp_path / 'train.jsonl', tmp_path / 'valid.jsonl'
+    train.write_text(json.dumps(episode(0)[0]) + '\n')
+    valid.write_text(json.dumps(episode(1)[0]) + '\n')
+    report = audit(str(train), str(valid))
+    assert report['train']['episodes'] == report['valid']['episodes'] == 1
+    assert report['cross_dataset_overlap'] == {'episode_ids': 0, 'case_ids': 0}
+    valid.write_text(train.read_text())
+    with pytest.raises(ValueError, match='overlap'):
+        audit(str(train), str(valid))

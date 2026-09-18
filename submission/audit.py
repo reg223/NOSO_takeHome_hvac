@@ -41,7 +41,7 @@ def check_disjoint(train, valid):
         raise ValueError('training/validation episode or case ID overlap')
 
 
-def make_splits(episodes):
+def make_splits(episodes, seed=SEED):
     """Shuffle sorted IDs with Generator(PCG64); assign whole case groups.
 
     For repeated cases, visit groups in first-occurrence order in the shuffled
@@ -52,7 +52,7 @@ def make_splits(episodes):
     if len(by_id) != len(episodes):
         raise ValueError('duplicate episode ID in split input')
     ordered = sorted(by_id)
-    np.random.default_rng(SEED).shuffle(ordered)
+    np.random.default_rng(seed).shuffle(ordered)
     groups = defaultdict(list)
     for eid in ordered:
         case = case_id(by_id[eid])
@@ -67,7 +67,7 @@ def make_splits(episodes):
         role = ROLES[0 if assigned < boundaries[0] else 1 if assigned < boundaries[1] else 2]
         result[role].extend(group)
         assigned += len(group)
-    result.update(seed=SEED, rng='numpy.random.default_rng (PCG64)',
+    result.update(seed=seed, rng='numpy.random.default_rng (PCG64)',
                   requested_counts=dict(zip(ROLES, targets)),
                   actual_counts={role: len(result[role]) for role in ROLES},
                   repeated_case_groups=sum(len(g) > 1 for g in groups.values()),
@@ -75,7 +75,25 @@ def make_splits(episodes):
     return result
 
 
-def audit(episodes):
+def write_splits(train_episode_ids, seed=SEED):
+    """Return deterministic role IDs; use make_splits for repeated case groups.
+
+    IDs alone cannot establish case grouping. The CLI always uses full episodes.
+    """
+    episodes = [[{'episode_id': eid, 'observation': {}}] for eid in train_episode_ids]
+    result = make_splits(episodes, seed=seed)
+    return {role: result[role] for role in ROLES}
+
+
+def audit(train_path, valid_path=None):
+    """Audit two paths, or summarize an already validated episode collection."""
+    if valid_path is not None:
+        report, _ = _audit_paths(train_path, valid_path)
+        return report
+    return summarize_episodes(train_path)
+
+
+def summarize_episodes(episodes):
     """Summarize validated complete episodes; no reward or cost reweighting."""
     counts = {name: Counter() for name in ('turn', 'action', 'topic', 'signal', 'outcome')}
     joint = Counter()
@@ -156,19 +174,13 @@ def dataset_metadata(path):
     return {'path': str(path), 'sha256': digest.hexdigest(), 'bytes': Path(path).stat().st_size}
 
 
-def main():
+def _audit_paths(train_path, valid_path):
     from submission.parse import load_episodes_with_quarantine
 
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--train', required=True, type=Path)
-    parser.add_argument('--valid', required=True, type=Path)
-    parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--splits', required=True, type=Path)
-    args = parser.parse_args()
-    train, train_quarantine = load_episodes_with_quarantine(args.train)
-    valid, valid_quarantine = load_episodes_with_quarantine(args.valid)
+    train, train_quarantine = load_episodes_with_quarantine(train_path)
+    valid, valid_quarantine = load_episodes_with_quarantine(valid_path)
     check_disjoint(train, valid)
-    datasets = {'train': dataset_metadata(args.train), 'valid': dataset_metadata(args.valid)}
+    datasets = {'train': dataset_metadata(train_path), 'valid': dataset_metadata(valid_path)}
     versions = {'python': platform.python_version(), 'numpy': np.__version__}
     report = {'schema_version': 1, 'datasets': datasets, 'runtime': versions,
               'train': audit(train), 'valid': audit(valid),
@@ -180,11 +192,22 @@ def main():
               'integrity_policy': 'Incomplete episodes are quarantined from return estimation and splits. All other integrity failures abort artifact generation; training must stop until treatment is documented.'}
     splits = {'schema_version': 1, 'datasets': datasets, 'runtime': versions, **make_splits(train),
               'quarantined_episode_ids': [item['episode_id'] for item in train_quarantine]}
+    return report, splits
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--train', required=True, type=Path)
+    parser.add_argument('--valid', required=True, type=Path)
+    parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--splits', required=True, type=Path)
+    args = parser.parse_args()
+    report, splits = _audit_paths(args.train, args.valid)
     for path, payload in ((args.output, report), (args.splits, splits)):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + '\n')
-    print(json.dumps({'train_episodes': len(train), 'valid_episodes': len(valid),
-                      'quarantined': len(train_quarantine) + len(valid_quarantine),
+    print(json.dumps({'train_episodes': report['train']['episodes'], 'valid_episodes': report['valid']['episodes'],
+                      'quarantined': sum(len(items) for items in report['quarantine'].values()),
                       'split_counts': splits['actual_counts']}, indent=2))
 
 

@@ -224,3 +224,28 @@ def test_load_episodes_rejects_unhashable_action_and_invalid_case_id(tmp_path):
 
     with pytest.raises(ValueError, match=r"line 1.*case_id"):
         load_episodes(path)
+
+
+def test_validate_episode_matches_loader_contract_without_mutation():
+    import copy
+    from submission import parse
+    assert hasattr(parse, 'validate_episode'), 'planned in-memory validator is missing'
+    rows = complete_episode()
+    before = copy.deepcopy(rows)
+    assert parse.validate_episode(rows) is None
+    assert rows == before
+    for invalid in ([], rows[:1], [rows[1]], rows + rows):
+        with pytest.raises(ValueError):
+            parse.validate_episode(invalid)
+    mixed = copy.deepcopy(rows)
+    mixed[1]['episode_id'] = 'other'
+    with pytest.raises(ValueError, match='episode_id'):
+        parse.validate_episode(mixed)
+
+
+@pytest.mark.parametrize('probability', [-0.1, 1.01, float('nan'), True])
+def test_probability_bounds(tmp_path, probability):
+    rows = complete_episode()
+    rows[0]['action_prob'] = probability
+    with pytest.raises(ValueError, match='action_prob'):
+        load_episodes(write_rows(tmp_path, rows))
