@@ -17,7 +17,14 @@ order unchanged.
 """
 from __future__ import annotations
 
+import math
+
+from typing import Any, Dict, List
+
 from submission.features import ACTIONS, featurize
+
+
+DEFAULT_SERVICE_RISK_THRESHOLD = 0.78
 
 
 MAINTENANCE_TOPICS = frozenset({
@@ -63,16 +70,24 @@ def _is_membership_relevant(features):
             or features["membership_status"] in MEMBERSHIP_STATUSES)
 
 
-def service_override(observation):
+def service_override(observation, history=None, *,
+                     service_risk_threshold=DEFAULT_SERVICE_RISK_THRESHOLD):
     """Return the terminal escalation safeguard, or ``None`` when inapplicable."""
+    del history
+    if (isinstance(service_risk_threshold, bool)
+            or not isinstance(service_risk_threshold, (int, float))
+            or not math.isfinite(service_risk_threshold)
+            or not 0 <= service_risk_threshold <= 1):
+        raise ValueError('service_risk_threshold must be a finite number in [0, 1]')
     features = _features(observation)
     risk = _number(features["service_risk_score"])
-    if features["customer_signal"] == "unhappy" or (risk is not None and risk > 0.78):
+    if features["customer_signal"] == "unhappy" or (risk is not None and risk > service_risk_threshold):
         return "ESCALATE_TO_HUMAN"
     return None
 
 
-def improved_rule(observation, history):
+def fallback_action(observation, history=None, *,
+                    service_risk_threshold=DEFAULT_SERVICE_RISK_THRESHOLD):
     """Choose the next action from visible observation fields only.
 
     ``history`` is intentionally ignored.  The supplied checker can combine
@@ -82,7 +97,7 @@ def improved_rule(observation, history):
     del history
     features = _features(observation)
 
-    override = service_override(observation)
+    override = service_override(observation, service_risk_threshold=service_risk_threshold)
     if override is not None:
         return override
     if _at_least(features["ignored_count"], 2):
@@ -119,7 +134,8 @@ def improved_rule(observation, history):
     return "WAIT"
 
 
-def eligible_actions(observation, *, filter_actions=True):
+def eligible_actions(observation, history=None, *, filter_actions=True,
+                     service_risk_threshold=DEFAULT_SERVICE_RISK_THRESHOLD):
     """Return context-compatible actions while retaining terminal safeguards.
 
     Filtering is for learned-policy candidates.  The benchmark action is also
@@ -138,6 +154,57 @@ def eligible_actions(observation, *, filter_actions=True):
     if _is_estimate_context(features):
         eligible.update(("ESTIMATE_NUDGE", "ASK_OBJECTION", "OFFER_SCHEDULING"))
 
-    fallback = improved_rule(observation, [])
+    fallback = fallback_action(observation, history, service_risk_threshold=service_risk_threshold)
     eligible.add(fallback)
     return [action for action in ACTIONS if action in eligible]
+
+
+# Backward-compatible name for existing benchmark callers.
+improved_rule = fallback_action
+
+
+def simple_rule_action(observation: Dict[str, Any], history: List[Dict[str, Any]]) -> str:
+    """Intentionally decent but beatable hand-coded policy."""
+
+    risk = observation["service_risk_score"]
+    signal = observation["customer_signal"]
+    track = observation["track_hint"]
+    membership = observation["membership_status"]
+    estimate = observation["estimate_value_bucket"]
+    ignored = observation["ignored_count"]
+    touches = observation["touch_count"]
+    patience = observation["user_patience"]
+    urgency = observation["urgency_score"]
+    relationship = observation["relationship_score"]
+
+    if signal == "unhappy" or risk > 0.78:
+        return "ESCALATE_TO_HUMAN"
+    if ignored >= 2:
+        return "PARK_THREAD"
+    if touches >= 4:
+        return "WAIT"
+    if track == "relationship":
+        if membership in {"expiring", "lapsed"}:
+            return "MEMBERSHIP_TOUCH"
+        if relationship > 0.55:
+            return "CHECK_IN"
+    if estimate != "none":
+        if signal in {"price_objection", "competitor", "ask_spouse", "timing_delay"} and patience > 0:
+            return "ASK_OBJECTION"
+        if signal == "positive" or urgency > 0.70:
+            return "OFFER_SCHEDULING"
+        return "ESTIMATE_NUDGE"
+    if membership in {"active", "expiring", "lapsed"}:
+        return "MEMBERSHIP_TOUCH"
+    return "WAIT"
+
+
+
+def always_check_in(observation, history=None):
+    """Unconditional comparison reference."""
+    return "CHECK_IN"
+
+
+def always_estimate_nudge(observation, history=None):
+    """Unconditional comparison reference."""
+    return "ESTIMATE_NUDGE"

@@ -113,3 +113,22 @@ def test_encoder_ignores_forbidden_fields_at_fit_and_inference():
                                   poisoned_encoder.transform(poisoned))
     np.testing.assert_array_equal(clean_encoder.transform(clean),
                                   clean_encoder.transform(poisoned))
+
+
+def test_optional_history_is_ignored_even_for_missing_visible_history():
+    for obs in ({}, {'previous_actions': ['WAIT', 'WAIT']}):
+        assert featurize(obs, [{'action': 'ASK_OBJECTION', 'reward': 999}]) == featurize(obs)
+        assert featurize(obs, ['ESCALATE_TO_HUMAN']) == featurize(obs)
+
+
+@pytest.mark.parametrize('previous, waits', [([], 0), (['WAIT', 'WAIT'], 2),
+                                           (['WAIT', 'CHECK_IN', 'WAIT'], 1),
+                                           (['WAIT', 'unknown'], 0)])
+def test_explicit_wait_runs_and_occurred_indicators(previous, waits):
+    f = featurize({'previous_actions': previous})
+    assert f['consecutive_waits'] == waits
+    for action in ('ASK_OBJECTION', 'ESTIMATE_NUDGE', 'OFFER_SCHEDULING'):
+        assert f['occurred_' + action] == int(action in previous)
+    missing = featurize({})
+    assert missing['consecutive_waits'] is None
+    assert missing['occurred_ASK_OBJECTION'] is None

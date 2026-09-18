@@ -15,7 +15,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.validation import check_is_fitted
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MISSING_CATEGORY = '__missing__'
 ACTIONS = (
     'WAIT', 'CHECK_IN', 'ESTIMATE_NUDGE', 'ASK_OBJECTION',
@@ -32,7 +32,8 @@ NUMERIC_FIELDS = (
     'days_since_last_inbound', 'days_since_last_outbound',
 )
 DERIVED_NUMERIC_FIELDS = (
-    'remaining_decisions', 'consecutive_repeat_count',
+    'remaining_decisions', 'consecutive_repeat_count', 'consecutive_waits',
+    'occurred_ASK_OBJECTION', 'occurred_ESTIMATE_NUDGE', 'occurred_OFFER_SCHEDULING',
     'days_since_last_inbound_is_99', 'days_since_last_outbound_is_99',
 ) + tuple('previous_count_' + action for action in ACTIONS)
 ALL_NUMERIC_FIELDS = NUMERIC_FIELDS + DERIVED_NUMERIC_FIELDS
@@ -49,7 +50,7 @@ def _category(value):
     return value if isinstance(value, str) and value else MISSING_CATEGORY
 
 
-def featurize(observation):
+def featurize(observation, history=None):
     """Return a deterministic scalar dictionary without learning or mutation.
 
     Numeric missingness is represented by None until the fitted encoder adds
@@ -59,6 +60,7 @@ def featurize(observation):
     the explicit field is used. Missing action history is distinct from an
     explicitly empty history. Unknown action strings break a repeat run.
     """
+    del history  # The checker may supply unrelated cases; use visible actions only.
     features = {field: _number(observation.get(field)) for field in NUMERIC_FIELDS}
     features.update({field: _category(observation.get(field)) for field in CATEGORICAL_FIELDS})
     previous = observation.get('previous_actions')
@@ -76,6 +78,10 @@ def featurize(observation):
                     break
                 repeat_count += 1
     features['consecutive_repeat_count'] = repeat_count
+    features['consecutive_waits'] = (repeat_count if previous and previous[-1] == 'WAIT'
+                                     else 0) if has_previous else None
+    for action in ('ASK_OBJECTION', 'ESTIMATE_NUDGE', 'OFFER_SCHEDULING'):
+        features['occurred_' + action] = int(action in previous) if has_previous else None
     turn = features['turn']
     features['remaining_decisions'] = 4 - turn if turn is not None else None
     for field in ('days_since_last_inbound', 'days_since_last_outbound'):

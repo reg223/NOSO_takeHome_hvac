@@ -289,3 +289,44 @@ def test_missing_signal_does_not_trigger_the_no_signal_nudge_follow_up():
     state = observation(topic='open_estimate', previous_actions=['ESTIMATE_NUDGE'])
     state.pop('customer_signal')
     assert improved_rule(state, []) == 'ESTIMATE_NUDGE'
+
+
+def test_public_contract_ignores_arbitrary_history_and_preserves_alias():
+    from submission.rules import fallback_action
+    state = observation(topic='open_estimate')
+    histories = [[], ['PARK_THREAD'], [{'action': 'ESCALATE_TO_HUMAN', 'reward': 999}]]
+    for history in histories:
+        assert fallback_action(state, history) == improved_rule(state, history)
+        assert eligible_actions(state, history) == eligible_actions(state)
+        assert service_override(state, history) is None
+
+
+def test_named_service_configuration_changes_only_explicit_development_calls():
+    from submission.rules import DEFAULT_SERVICE_RISK_THRESHOLD, fallback_action
+    assert DEFAULT_SERVICE_RISK_THRESHOLD == 0.78
+    state = observation(service_risk_score=0.75)
+    assert service_override(state, [], service_risk_threshold=0.70) == 'ESCALATE_TO_HUMAN'
+    assert fallback_action(state, [], service_risk_threshold=0.70) == 'ESCALATE_TO_HUMAN'
+    assert service_override(state) is None
+    assert fallback_action(state, []) == 'WAIT'
+    for invalid in (-1, 2, float('nan'), True):
+        with pytest.raises(ValueError):
+            service_override(state, service_risk_threshold=invalid)
+
+
+def test_simple_references_match_preserved_starter_on_all_rule_branches():
+    from starter.baselines import simple_rule
+    from submission.rules import simple_rule_action, always_check_in, always_estimate_nudge
+    base = observation(track_hint='generic', touch_count=0, urgency_score=0.1,
+                       relationship_score=0.1)
+    cases = [{}, {'customer_signal': 'unhappy'}, {'ignored_count': 2}, {'touch_count': 4},
+             {'track_hint': 'relationship', 'membership_status': 'lapsed'},
+             {'track_hint': 'relationship', 'relationship_score': 0.6},
+             {'estimate_value_bucket': 'high', 'customer_signal': 'price_objection'},
+             {'estimate_value_bucket': 'high', 'urgency_score': 0.9},
+             {'estimate_value_bucket': 'high'}, {'membership_status': 'active'}]
+    for fields in cases:
+        state = dict(base, **fields)
+        assert simple_rule_action(state, []) == simple_rule(state, [])
+        assert always_check_in(state, []) == 'CHECK_IN'
+        assert always_estimate_nudge(state, []) == 'ESTIMATE_NUDGE'
